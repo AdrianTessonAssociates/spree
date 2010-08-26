@@ -67,7 +67,7 @@ module Spree
     def void(payment)
       return unless transaction = purchase_or_authorize_transaction_for_payment(payment)
 
-      response = payment_gateway.void(transaction.response_code, self, minimal_gateway_options(payment))
+      response = payment_gateway.void(transaction.response_code, minimal_gateway_options(payment))
       gateway_error(response) unless response.success?
 
       # create a transaction to reflect the void
@@ -87,10 +87,13 @@ module Spree
 
       amount ||= payment.order.outstanding_credit
 
+      payment.order.increment_vtx_serial() if payment.order.respond_to? "increment_vtx_serial"
+      options = minimal_gateway_options(payment).merge(:description => "credit")
+
       if payment_gateway.payment_profiles_supported?
-        response = payment_gateway.credit((amount * 100).round, self, transaction.response_code, minimal_gateway_options(payment))
+        response = payment_gateway.credit((amount * 100).round, self, transaction.response_code, options)
       else
-        response = payment_gateway.credit((amount * 100).round, transaction.response_code, minimal_gateway_options(payment))
+        response = payment_gateway.credit((amount * 100).round, transaction.response_code, options)
       end
       gateway_error(response) unless response.success?
 
